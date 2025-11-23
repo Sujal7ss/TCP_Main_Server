@@ -1,10 +1,16 @@
 services:
-  - type: web
-    name: tcp-main-server
-    env: python
+  - name: tcp-main-server
+    type: web
+    runtime: python
     region: oregon
-    buildCommand: "pip install -r requirements.txt"
-    startCommand: "gunicorn server.wsgi:application"
+
+    buildCommand: |
+      pip install -r requirements.txt
+      python manage.py collectstatic --noinput
+      python manage.py migrate
+
+    startCommand: gunicorn server.wsgi:application
+
     envVars:
       - key: DJANGO_SETTINGS_MODULE
         value: server.settings
