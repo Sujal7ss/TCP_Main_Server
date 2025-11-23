@@ -1,0 +1,59 @@
+name: Deploy Django Backend
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  CI: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.11
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Generate PEM file for SSH
+      run: echo "$PEM" > tcp.pem && chmod 400 tcp.pem
+      env:
+        PEM: ${{ secrets.PEM }}
+
+    - name: Copy project to server (rsync) 
+      run: |
+        sudo apt-get update && sudo apt-get install -y rsync
+        rsync -avz --exclude 'tcp.pem' -e "ssh -o StrictHostKeyChecking=no -i tcp.pem" ./ root@142.93.212.1:/home/TCP_Main_Server/
+
+    - name: Install server-side dependencies & restart backend
+      run: |
+        ssh -o StrictHostKeyChecking=no -i tcp.pem root@142.93.212.1 << 'EOF'
+          cd /home/TCP_Main_Server
+          source venv/bin/activate || python3 -m venv venv && source venv/bin/activate
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          python manage.py collectstatic --noinput
+          sudo systemctl restart tcp_backend  # Replace with your actual service name
+        EOF
+
+    - name: Backend is live!
+      run: echo "🚀 Django Backend Deployed Successfully!"

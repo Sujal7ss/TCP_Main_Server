@@ -2,6 +2,7 @@ from django.db import models
 from django.core.validators import MaxValueValidator, MinValueValidator,MinLengthValidator  
 from django.contrib.auth.models import AbstractUser
 from django.core.serializers import serialize
+from django.contrib.auth.hashers import make_password, check_password
 # Create your models here.
 # Mentor model
 
@@ -43,7 +44,7 @@ class Mentor(models.Model):
     branch = models.CharField(max_length=10,choices=Branches)
     semester = models.IntegerField(validators=[MinValueValidator(1),MaxValueValidator(8)])
     phone_number = models.CharField(max_length=10,unique=True)
-    image=models.URLField(null=True,blank=True,default="https://avatars.githubusercontent.com/u/5783068?v=4")
+    image=models.URLField(null=True,blank=True,default="https://avatar.iran.liara.run/public/8")
     codechefID = models.URLField(max_length=300,null=True,blank=True)
     codeforcesID = models.URLField(max_length=300,null=True,blank=True)
     leetcodeID = models.URLField(max_length=300,null=True,blank=True)
@@ -54,6 +55,16 @@ class Mentor(models.Model):
     total_q = models.BigIntegerField(default=0)
     topic_count=models.JSONField(default=dict,null=True,blank=True)
     Qlevel_count=models.JSONField(default=dict,null=True,blank=True)
+
+    def save(self, *args, **kwargs):
+        # Hash password if it's not already hashed
+        if self.password and not self.password.startswith('pbkdf2_'):
+            self.password = make_password(self.password)
+        super().save(*args, **kwargs)
+    
+    def check_password(self, raw_password):
+        """Check if the provided password matches the hashed password"""
+        return check_password(raw_password, self.password)
     
     def allotted_teams(self):
         teams=  Team.objects.filter(alloted_mentor=self)
@@ -71,7 +82,7 @@ class Mentee(models.Model):
     branch = models.CharField(max_length=10)
     semester = models.IntegerField(validators=[MinValueValidator(1),MaxValueValidator(8)])
     phone_number = models.CharField(max_length=10,unique=True)
-    image=models.URLField(null=True,blank=True,default="https://avatars.githubusercontent.com/u/5783068?v=4")
+    image=models.URLField(null=True,blank=True,default="https://avatar.iran.liara.run/public/48")
     codechefID = models.URLField(max_length=300,null=True,blank=True)
     codeforcesID = models.URLField(max_length=300,null=True,blank=True)
     leetcodeID = models.URLField(max_length=300,null=True,blank=True)
@@ -86,7 +97,15 @@ class Mentee(models.Model):
     cumHour_diff=models.BigIntegerField(default=0)
     Mentee_rank=models.IntegerField(default=0)
 
+    def save(self, *args, **kwargs):
+        # Hash password if it's not already hashed
+        if self.password and not self.password.startswith('pbkdf2_'):
+            self.password = make_password(self.password)
+        super().save(*args, **kwargs)
     
+    def check_password(self, raw_password):
+        """Check if the provided password matches the hashed password"""
+        return check_password(raw_password, self.password)
     
     def get_team(self):
         teams =  Team.objects.filter(team_members=self)
@@ -99,7 +118,7 @@ class Mentee(models.Model):
 
 
 class Team(models.Model):
-    team_name       = models.CharField(max_length=50,null=False,unique=True)
+    team_name       = models.CharField(max_length=50,null=False,unique=True,validators=[MinLengthValidator(1)])
     alloted_mentor = models.ForeignKey(Mentor, on_delete=models.SET_NULL, null=True, blank=True)
     team_members = models.ManyToManyField(Mentee)
     team_score      = models.IntegerField(default=0)
