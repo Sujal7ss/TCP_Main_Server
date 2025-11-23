@@ -2,10 +2,11 @@ from django.contrib import admin
 from django.urls import path, include
 from . import settings
 from django.conf.urls.static import static
-
+from django.http import HttpResponse
 
 #url routing
 urlpatterns = [
+    path("", lambda request: HttpResponse("TCP Main Server is running.")),
     path('server/admin/', admin.site.urls),
     path('', include('Events.urls')),
     path('', include('Speakers.urls')),
